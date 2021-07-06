@@ -418,9 +418,7 @@ pub fn main() !void {
         var blk_out: vk.c.VkRenderPass = undefined;
         const result = vk.c.vkCreateRenderPass(vulkan_components.device.handle, &render_pass_create_info, null, &blk_out);
         
-        const try_result = try vk.resultToError(result);
-        if (try_result != .success)
-        return error.FailedToCreateRenderPass;
+        _ = try vk.resultToError(result);
         
         break :blk blk_out;
     }; defer vk.c.vkDestroyRenderPass(vulkan_components.device.handle, render_pass, null);
@@ -613,8 +611,7 @@ pub fn main() !void {
         const result = vk.c.vkCreateGraphicsPipelines(vulkan_components.device.handle, null, 1, &graphics_pipeline_create_info, null, &blk_out);
         
         const try_result = try vk.resultToError(result);
-        if (try_result != .success)
-        return error.FailedToCreateGraphicsPipeline;
+        if (try_result != .success) return error.FailedToCreateGraphicsPipeline;
         
         break :blk blk_out;
     }; defer vk.c.vkDestroyPipeline(vulkan_components.device.handle, graphics_pipeline, null);
@@ -644,9 +641,7 @@ pub fn main() !void {
             };
             
             const result = vk.c.vkCreateFramebuffer(vulkan_components.device.handle, &framebuffer_create_info, null, &framebuffer_slice[idx]);
-            const try_result = try vk.resultToError(result);
-            if (try_result != .success)
-            return error.FailedToCreateAFrameBuffer;
+            _ = try vk.resultToError(result);
         }
         
         break :blk framebuffer_slice;
@@ -664,10 +659,7 @@ pub fn main() !void {
         
         var blk_out: vk.c.VkCommandPool = undefined;
         const result = vk.c.vkCreateCommandPool(vulkan_components.device.handle, &command_pool_create_info, null, &blk_out);
-        
-        const try_result = try vk.resultToError(result);
-        if (try_result != .success)
-        return error.FailedToCreateCommandPool;
+        _ = try vk.resultToError(result);
         
         break :blk blk_out;
         
@@ -686,10 +678,7 @@ pub fn main() !void {
         
         try command_buffers.resize(main_allocator, swapchain_framebuffers.len);
         const result = vk.c.vkAllocateCommandBuffers(vulkan_components.device.handle, &alloc_info, command_buffers.items.ptr);
-        const try_result = try vk.resultToError(result);
-        
-        if (try_result != .success)
-        return error.FailedToAllocateCommandBuffers;
+        _ = try vk.resultToError(result);
         
         break :allocate_command_buffers;
     }
@@ -704,11 +693,7 @@ pub fn main() !void {
         };
         
         const result = vk.c.vkBeginCommandBuffer(cb, &command_buffer_begin_info);
-        const try_result = try vk.resultToError(result);
-        
-        if (try_result != .success) {
-            return error.FailedToBeginCommandBuffer;
-        }
+        _ = try vk.resultToError(result);
         
         const clear_colors: []const vk.c.VkClearValue = &[_]vk.c.VkClearValue {
             .{.color = .{.float32 = .{0.0, 0.0, 0.0, 1.0} }},
@@ -832,8 +817,7 @@ pub fn main() !void {
             };
             
             const result = vk.c.vkQueueSubmit(graphics_queue.handle, 1, &submit_info, null);
-            const try_result = try vk.resultToError(result);
-            if (try_result != .success) return error.FailedToSubmitToQueue;
+            _ = try vk.resultToError(result);
             
             break :submit_info_blk;
         }
