@@ -77,11 +77,7 @@ pub const Window = struct {
     pub const Handle = *c.GLFWwindow;
 };
 
-pub fn requiredVulkanExtensionsBuf(out: [][*]const u8) void {
-    out = requiredVulkanExtensions();
-}
-
-pub fn requiredVulkanExtensions() []const [*]const u8 {
+pub fn requiredVulkanInstanceExtensions() []const [*]const u8 {
     var len: u32 = undefined;
     const out = c.glfwGetRequiredInstanceExtensions(&len);
     

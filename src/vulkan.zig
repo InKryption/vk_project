@@ -29,8 +29,6 @@ pub const Result: type = blk: {
     
     var blk_out: TypeInfo = .{ .Enum = undefined };
     
-    
-    // Array of all vulkan result identifiers.
     const vulkan_result_name_prefix = "VK_";
     const vulkan_result_names = &[_][]const u8{
         // (c name)                                              // (zig name)
@@ -84,7 +82,7 @@ pub const Result: type = blk: {
     blk_out.Enum.layout = .Auto;
     blk_out.Enum.tag_type = c.VkResult;
     blk_out.Enum.decls = &[_]TypeInfo.Declaration{};
-    blk_out.Enum.is_exhaustive = false;
+    blk_out.Enum.is_exhaustive = true;
     blk_out.Enum.fields = undefined;
     
     var fields_buf: [vulkan_result_names.len]TypeInfo.EnumField = undefined;
@@ -92,7 +90,7 @@ pub const Result: type = blk: {
     fields.len = 0;
     
     for (vulkan_result_names) |vk_result_name| {
-        @setEvalBranchQuota(vk_result_name.len * 53);
+        @setEvalBranchQuota(vk_result_name.len * 60);
         if (!@hasDecl(c_namespace, vk_result_name)) continue;
         
         var zig_name: [vk_result_name.len - vulkan_result_name_prefix.len]u8 = undefined;
@@ -137,12 +135,16 @@ pub const Error: type = blk: {
 };
 
 /// If the given Vulkan Result is an error value, returns an equivalent error. Otherwise, returns the result value.
-pub fn resultToError(result: Result) Error!Result {
+pub fn resultToError(result: anytype) Error!Result {
+    const T = @TypeOf(result);
     
-    const value = @enumToInt(result);
-    if (value >= 0) return result;
+    std.debug.assert(T == Result or T == @typeInfo(Result).Enum.tag_type);
     
-    const equivalent_errname = @tagName(result)[6..];
+    const enum_tag = if (T == Result) result else @intToEnum(Result, result);
+    const value = if (T == Result) @enumToInt(result) else result;
+    if (value >= 0) return enum_tag;
+    
+    const equivalent_errname = @tagName(enum_tag)[6..];
     
     inline for(@typeInfo(Error).ErrorSet.?) |errfield| {
         if (std.mem.eql(u8, equivalent_errname, errfield.name)) {
@@ -195,7 +197,7 @@ pub const Instance = struct {
         var instance: Instance = undefined;
         
         const result = c.vkCreateInstance(&vk_instance_create_info, vk_allocator, &instance.handle);
-        const try_result = try resultToError(@intToEnum(Result, result));
+        const try_result = try resultToError(result);
         
         if (try_result == .success) return instance
         else return error.FailedToCreateVulkanInstance;
@@ -232,6 +234,7 @@ pub const Instance = struct {
     pub fn enumeratePhysicalDevicesAlloc(self: Self, allocator: *std.mem.Allocator) ![]PhysicalDevice {
         const n = self.physicalDeviceCount();
         const out = try allocator.allocAdvanced(PhysicalDevice, null, n, .exact);
+        errdefer allocator.free(out);
         try self.enumeratePhysicalDevices(out);
         return out;
     }
@@ -566,6 +569,18 @@ pub const Device = struct {
         c.vkDestroyDevice(self.handle, vk_allocator);
     }
     
+    pub fn createShaderModule(self: Self, vk_allocator: ?*const c.VkAllocationCallbacks, create_info: ShaderModule.CreateInfo) !ShaderModule {
+        var out: ShaderModule = undefined;
+        
+        const result = c.vkCreateShaderModule(self.handle, &create_info.toVkShaderModuleCreateInfo(), vk_allocator, &out.handle);
+        const try_result = try resultToError(result);
+        
+        if (try_result != .success)
+        return error.FailedToCreateShaderModule;
+        
+        return out;
+    }
+    
     pub fn getQueue(self: Self, family_index: u32, queue_index: u32) Queue {
         var out: Queue = undefined;
         c.vkGetDeviceQueue(self.handle, family_index, queue_index, &out.handle);
@@ -775,4 +790,33 @@ const ImageView = struct {
     };
     
     pub const Handle = c.VkImageView;
+};
+
+/// Created by `Device.createShaderModule`;
+pub const ShaderModule = struct {
+    const Self = @This();
+    handle: Handle,
+    
+    pub fn deinit(self: Self, vk_allocator: ?*const c.VkAllocationCallbacks, device: Device) void {
+        c.vkDestroyShaderModule(device.handle, self.handle, vk_allocator);
+    }
+    
+    pub const CreateInfo = struct {
+        next: ?*const c_void = null,
+        code: []const u32,
+        flags: c.VkShaderModuleCreateFlags,
+        
+        fn toVkShaderModuleCreateInfo(create_info: CreateInfo) c.VkShaderModuleCreateInfo {
+            return c.VkShaderModuleCreateInfo {
+                .sType = c.VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+                .pNext = create_info.next, 
+                .codeSize = create_info.code.len,
+                .pCode = create_info.code.ptr,
+                .flags = create_info.flags,
+            };
+        }
+        
+    };
+    
+    pub const Handle = c.VkShaderModule;
 };

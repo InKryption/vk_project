@@ -6,19 +6,31 @@ pub fn build(b: *std.build.Builder) void {
     // means any target is allowed, and the default is native. Other options
     // for restricting supported target set are available.
     const target = b.standardTargetOptions(.{});
-
+    
     // Standard release options allow the person running `zig build` to select
     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall.
     const mode = b.standardReleaseOptions();
-
+    
     const exe = b.addExecutable("vk_project", "src/main.zig");
+    
+    const vulkan_dir = "C:/VulkanSDK/1.2.176.1/";
+    const vulkan_include_dir = vulkan_dir ++ "/Include/";
+    const vulkan_lib_dir = vulkan_dir ++ "/Lib/";
+    
+    const glslc_invocation = "glslc";
+    
+    const triangle_shader_vert = b.addSystemCommand(&[_][]const u8{glslc_invocation, "src/triangle_shader.vert", "-o./zig-out/shader/triangle_vert.spv"});
+    exe.step.dependOn(&triangle_shader_vert.step);
+    
+    const triangle_shader_frag = b.addSystemCommand(&[_][]const u8{glslc_invocation, "src/triangle_shader.frag", "-o./zig-out/shader/triangle_frag.spv"});
+    exe.step.dependOn(&triangle_shader_frag.step);
+    
+    exe.addIncludeDir(vulkan_include_dir);
+    exe.addLibPath(vulkan_lib_dir);
     
     exe.linkLibC();
     exe.linkSystemLibrary("gdi32");
     exe.linkSystemLibrary("vulkan-1");
-    
-    exe.addIncludeDir("C:/VulkanSDK/1.2.176.1/Include");
-    exe.addLibPath("C:/VulkanSDK/1.2.176.1/Lib");
     
     exe.addIncludeDir("dependencies/glfw-3.3.4/include/");
     exe.defineCMacro("_GLFW_WIN32", null);
