@@ -842,7 +842,8 @@ pub fn main() !void {
                 
                 .pResults = null,
             };
-            _ = vk.c.vkQueuePresentKHR(graphics_queue.handle, &present_info);
+            const result = vk.c.vkQueuePresentKHR(graphics_queue.handle, &present_info);
+            _ = vk.resultToError(result) catch continue :mainloop;
             
             break :presentation_blk;
         }
