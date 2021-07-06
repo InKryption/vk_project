@@ -1,1 +1,0 @@
-19726 281474977648505 1625547132000000000 eec5ca0fab34675b48bfc856c62e3285 C:\Users\InK\zig\lib\zig\libc\mingw\lib-common\gdi32.def
